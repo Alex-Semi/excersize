@@ -1,0 +1,4 @@
+# Зависимости для Windows 11 (tkinter и sqlite3 входят в стандартную поставку Python)
+winotify>=1.1.0
+# Альтернатива: pip install win10toast  (notifier.py сам выберет доступный способ,
+# а без внешних библиотек использует MessageBoxW / tkinter popup)
