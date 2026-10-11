@@ -10,7 +10,7 @@ db.py — слой работы с базой данных SQLite3 для при
 """
 
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import List, Optional
 
@@ -178,20 +178,26 @@ class ReminderDB:
             ).fetchall()
             return [_row_to_dict(r) for r in rows]
 
+    # После наступления времени напоминание остаётся в статусе 'Ожидает'
+    # это время (минут), показывая уведомление; затем становится 'Просрочено'.
+    OVERDUE_GRACE_MINUTES = 60
+
     def auto_expire_overdue(self, now: Optional[datetime] = None) -> int:
         """
         Автоматически переводит просроченные напоминания в статус 'Просрочено'.
-        Просроченным считается 'Ожидает', у которого время вышло более N минут назад
-        (и при этом оно уже было проуведомлено либо время сильно прошло).
+
+        Просроченным считается 'Ожидает', у которого время срабатывания
+        прошло больше, чем на OVERDUE_GRACE_MINUTES минут.
         Возвращает количество обновлённых записей.
         """
         now = now or datetime.now()
+        cutoff = (now - timedelta(minutes=self.OVERDUE_GRACE_MINUTES)).strftime(DT_FORMAT)
         with self._connect() as conn:
             cur = conn.execute(
                 """
                 UPDATE reminders SET status = ?
-                WHERE status = ? AND due_dt < ? AND notified = 1
+                WHERE status = ? AND due_dt < ?
                 """,
-                (STATUS_OVERDUE, STATUS_PENDING, now.strftime(DT_FORMAT)),
+                (STATUS_OVERDUE, STATUS_PENDING, cutoff),
             )
             return cur.rowcount
